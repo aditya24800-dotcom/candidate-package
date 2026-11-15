@@ -31,13 +31,13 @@ asked how every email could pass when duplicates were not detected. Counted with
 out, precision was 0.823, with 45 invented lines. That is what led to the duplicate step in
 `rfq_parser/preparser.py`.
 Session `84edf70f`, at "if duplicate emals and all are not properly detected how all 24 email
-tested fine?". Commit `<hash>`.
+tested fine?". Commit `f143633`.
 
 **I overruled it.** The agent recommended deciding duplicates after the model, by comparing
 the extracted lines, and catching only an identical `Message-ID` before it. I had the whole
 check put in the pre-parser instead. A repeated email is now never sent to the model, and
 E008 costs no model call.
-Session `84edf70f`, at "add a step in preparser to detect any dumplicate". Commit `<hash>`.
+Session `84edf70f`, at "add a step in preparser to detect any dumplicate". Commit `f143633`.
 
 **It saved real time.** The cache. When I asked for the model code, the agent built the cache
 with it: every model answer is saved to a file named by a hash of the whole request, so a
@@ -46,7 +46,7 @@ takes about 3 minutes and costs $0.10. From the cache it takes about 1 second an
 nothing. Every later test, the 58-check diagnostic and the web app ran from it, and it is also
 what makes the inbox run with no API key.
 Session `84edf70f`, at "ok create a llm folder and add all LLM related codes in that". Commit
-`<hash>`.
+`f143633`.
 
 ## Sessions in `ai-sessions/`
 
