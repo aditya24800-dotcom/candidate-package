@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RFQ inbox walk-through</title>
+<style>
+  :root { --line:#d9dde3; --muted:#667085; --bg:#f5f6f8; --card:#fff; --ink:#1b1f24;
+          --green:#1a7f4b; --amber:#b25e09; --red:#b42318; --blue:#1f5fbf; --hit:#fff3b0; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 system-ui, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:10px 16px; background:#1b2a3a; color:#fff; display:flex; gap:16px; align-items:baseline; }
+  header h1 { font-size:16px; margin:0; }
+  header span { color:#b9c4d0; font-size:13px; }
+  main { display:grid; grid-template-columns:270px minmax(0,1.05fr) minmax(0,1fr); height:calc(100vh - 42px); }
+  main > * { overflow:auto; padding:12px; }
+  #inbox { background:#fff; border-right:1px solid var(--line); padding:0; }
+  #lines { border-left:1px solid var(--line); }
+  .item { padding:8px 12px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .item:hover { background:#f0f4fa; }
+  .item.active { background:#e3edfb; box-shadow:inset 3px 0 0 var(--blue); }
+  .item .who, .item .subject { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item .who { color:var(--muted); font-size:12px; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .chip { display:inline-block; padding:1px 7px; border-radius:10px; font-size:12px; background:#e7eaee; color:#344054; white-space:nowrap; }
+  .chip.green { background:#dff3e7; color:var(--green); } .chip.amber { background:#fdebd3; color:var(--amber); }
+  .chip.red { background:#fde3e0; color:var(--red); } .chip.blue { background:#dfe9fb; color:var(--blue); }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:18px 0 6px; }
+  h2:first-child { margin-top:0; }
+  h2 b { color:var(--ink); margin-right:6px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:10px 12px; margin-bottom:8px; }
+  .card.click { cursor:pointer; } .card.click:hover { border-color:#9db7e0; }
+  .card.selected { border-color:var(--blue); box-shadow:0 0 0 2px #cfe0fb; }
+  table.headers td { padding:1px 10px 1px 0; vertical-align:top; } table.headers td:first-child { color:var(--muted); }
+  .part { border-left:3px solid var(--green); padding:2px 0 2px 10px; margin:8px 0; }
+  .part.quoted { border-color:#b7bec8; color:#4b5563; } .part.forwarded { border-color:var(--blue); }
+  .intro { color:var(--muted); font-style:italic; white-space:pre-wrap; }
+  .ln { font:12.5px/1.5 ui-monospace, Consolas, monospace; white-space:pre-wrap; word-break:break-word; min-height:1.2em; padding:0 3px; border-radius:3px; }
+  .ln.hit { background:var(--hit); outline:1px solid #e6c84a; }
+  .attachment { border-top:1px dashed var(--line); padding-top:8px; margin-top:8px; }
+  .attachment:first-of-type { border-top:0; padding-top:0; margin-top:0; }
+  .attachment .children { margin-left:16px; }
+  .attachment img { max-width:100%; max-height:300px; border:1px solid var(--line); border-radius:4px; display:block; margin:6px 0; }
+  .muted { color:var(--muted); } .mono { font-family:ui-monospace, Consolas, monospace; font-size:12.5px; }
+  details pre { white-space:pre-wrap; word-break:break-word; font:12px/1.45 ui-monospace, Consolas, monospace; background:#f8f9fb; padding:8px; border-radius:4px; max-height:420px; overflow:auto; }
+  summary { cursor:pointer; }
+  .raw { background:#f3f5f8; padding:3px 6px; border-radius:4px; margin:6px 0 4px; white-space:pre-wrap; word-break:break-word; }
+  .decision { margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+  button { font:inherit; padding:3px 9px; border:1px solid #b9c0ca; background:#fff; border-radius:5px; cursor:pointer; }
+  button:hover { background:#eef2f7; } button.on { background:#1f5fbf; color:#fff; border-color:#1f5fbf; }
+  input[type=search] { font:inherit; width:100%; padding:4px 7px; border:1px solid #b9c0ca; border-radius:5px; margin:6px 0 4px; }
+  .pick { display:block; width:100%; text-align:left; margin:2px 0; border-color:var(--line); }
+  .rep { font-weight:600; } a { color:var(--blue); }
+  .flash { animation:flash 1s; } @keyframes flash { from { background:var(--hit); } to { background:transparent; } }
+</style>
+</head>
+<body>
+<header><h1>RFQ inbox walk-through</h1><span id="totals"></span><span>Click a line on the right to see where it came from. Arrow keys move between emails.</span></header>
+<main>
+  <nav id="inbox"></nav>
+  <section id="email"></section>
+  <section id="lines"></section>
+</main>
+<script>
+"use strict";
+// Every piece of email text is put on the page with textContent, never as HTML.
+const $ = (selector, root = document) => root.querySelector(selector);
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (value == null || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key === "text") node.textContent = value;
+    else if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  for (const child of children.flat()) if (child != null && child !== false) node.append(child);
+  return node;
+}
+const chip = (text, color) => el("span", { class: "chip " + (color || ""), text });
+const api = async (path, options) => (await fetch(path, options)).json();
+const CLASS_COLOR = { rfq: "blue", rfq_revision: "blue", purchase_order: "green" };
+const MATCH = { matched: ["Matched", "green"], not_in_catalog: ["Not in catalog", ""], ambiguous: ["Ask the customer", "amber"] };
+const PART_NAME = { current: "Current message", quoted: "Quoted earlier message", forwarded: "Forwarded message" };
+
+let inbox = [], current = null, selectedLine = null;
+
+async function start() {
+  inbox = await api("/api/inbox");
+  const lines = inbox.reduce((sum, row) => sum + row.lines, 0);
+  $("#totals").textContent = `${inbox.length} emails, ${lines} line items, ${inbox.filter(r => r.needs_review).length} need review`;
+  renderInbox();
+  const wanted = decodeURIComponent(location.hash.slice(1));
+  select(inbox.some(r => r.id === wanted) ? wanted : inbox[0].id);
+}
+
+function renderInbox() {
+  $("#inbox").replaceChildren(...inbox.map(row =>
+    el("div", { class: "item", "data-id": row.id, onclick: () => select(row.id) },
+      el("div", { class: "row" },
+        el("b", { text: row.id }), chip(row.classification, CLASS_COLOR[row.classification]),
+        row.lines ? chip(row.lines + (row.lines === 1 ? " line" : " lines")) : null,
+        row.needs_review ? chip("review", "red") : null,
+        row.duplicate_of ? chip("duplicate", "amber") : null),
+      el("div", { class: "subject", text: row.subject || "(no subject)" }),
+      el("div", { class: "who", text: row.from }))));
+}
+
+async function select(id) {
+  current = await api("/api/email/" + encodeURIComponent(id));
+  selectedLine = null;
+  location.hash = id;
+  for (const item of document.querySelectorAll(".item")) item.classList.toggle("active", item.dataset.id === id);
+  $(".item.active")?.scrollIntoView({ block: "nearest" });
+  renderEmail(); renderLines();
+  $("#email").scrollTop = 0; $("#lines").scrollTop = 0;
+}
+
+const jump = id => el("a", { href: "#" + id, text: id, onclick: event => { event.preventDefault(); select(id); } });
+const textLines = text => (text || "").split("\n").map(line => el("div", { class: "ln", text: line }));
+
+function renderEmail() {
+  const e = current, record = e.record, out = [];
+  // 1. the email as it arrived
+  out.push(el("h2", {}, el("b", { text: "1" }), "The email as received"));
+  const headerRows = [["From", e.headers.from], ["To", e.headers.to], ["Cc", e.headers.cc], ["Date", e.headers.date], ["Subject", e.headers.subject]]
+    .filter(([, value]) => value).map(([name, value]) => el("tr", {}, el("td", { text: name }), el("td", { text: value })));
+  const body = el("div", { class: "card" }, el("table", { class: "headers" }, headerRows));
+  if (e.error) body.append(el("p", { class: "muted", text: "This file could not be parsed: " + e.error }));
+  for (const part of e.parts)
+    body.append(el("div", { class: "part " + part.kind, "data-source": "body" },
+      chip(PART_NAME[part.kind], part.kind === "current" ? "green" : part.kind === "forwarded" ? "blue" : ""),
+      part.intro ? el("div", { class: "intro", text: part.intro }) : null, textLines(part.text)));
+  out.push(body);
+
+  // 2. the attachments and how each was read
+  out.push(el("h2", {}, el("b", { text: "2" }), "Attachments and how each was read"));
+  out.push(el("div", { class: "card" }, e.attachments.length
+    ? e.attachments.map(a => attachmentBlock(a.extraction, a))
+    : el("span", { class: "muted", text: "No attachments." })));
+
+  // 3. what the model was given
+  out.push(el("h2", {}, el("b", { text: "3" }), "What the model was sent"));
+  out.push(el("div", { class: "card" }, e.model_input
+    ? el("details", {}, el("summary", { text: `Show the full text (${e.model_input.length.toLocaleString()} characters)` }), el("pre", { text: e.model_input }))
+    : el("span", { class: "muted", text: record.duplicate_of ? "Nothing: a duplicate is not sent to the model." : "Nothing was sent." })));
+
+  // 4. what came back
+  out.push(el("h2", {}, el("b", { text: "4" }), "What the system concluded"));
+  const verdict = el("div", { class: "card" }, el("div", { class: "row" },
+    chip(record.classification, CLASS_COLOR[record.classification]),
+    record.needs_review ? chip("needs review", "red") : null,
+    record.duplicate_of ? el("span", {}, "duplicate of ", jump(record.duplicate_of)) : null,
+    record.revises ? el("span", {}, "revises ", jump(record.revises)) : null));
+  if (e.summary) verdict.append(el("p", { text: e.summary }));
+  if (record.review_reason) verdict.append(el("p", {}, el("b", { text: "Why a person must look: " }), record.review_reason));
+  verdict.append(el("div", { class: "muted", text: e.cost
+    ? `${e.cost.calls} model call${e.cost.calls === 1 ? "" : "s"}, ${e.cost.input_tokens.toLocaleString()} tokens in, ${e.cost.output_tokens.toLocaleString()} out` +
+      (e.cost.cost_usd == null ? "" : `, $${e.cost.cost_usd.toFixed(4)}`)
+    : "No model call was made for this email." }));
+  out.push(verdict);
+  $("#email").replaceChildren(...out);
+}
+
+function attachmentBlock(x, file) {
+  const name = x ? x.filename : file.filename;
+  const block = el("div", { class: "attachment", "data-source": name });
+  const title = file ? el("a", { href: file.url, target: "_blank", rel: "noopener", text: name }) : el("b", { text: name });
+  const head = el("div", { class: "row" }, title);
+  if (!x) { block.append(head, el("div", { class: "muted", text: "Not read." })); return block; }
+  head.append(chip(x.file_type));
+  if (x.status !== "ok") head.append(chip("could not be read", "red"));
+  else head.append(chip(x.method === "llm" ? "transcribed by the model" : "read by code", x.method === "llm" ? "blue" : "green"));
+  if (x.kind === "logo_or_signature") head.append(chip("logo or signature", ""));
+  if (x.status === "ok" && !x.legible) head.append(chip("reader unsure", "amber"));
+  block.append(head);
+  if (x.note) block.append(el("div", { class: "muted", text: x.note }));
+  if (file && ["png", "jpeg", "gif", "webp"].includes(x.file_type)) block.append(el("img", { src: file.url, alt: name }));
+  if (x.text) block.append(...textLines(x.text));
+  if (x.children.length) block.append(el("div", { class: "children" }, x.children.map(child => attachmentBlock(child, null))));
+  return block;
+}
+
+function renderLines() {
+  const e = current, lines = e.record.line_items, decided = Object.keys(e.decisions).length;
+  const count = kind => lines.filter(l => l.match === kind).length;
+  const out = [el("h2", {}, el("b", { text: "5" }), "Line items and catalog decisions")];
+  if (!lines.length) {
+    const why = e.record.duplicate_of ? `This email repeats ${e.record.duplicate_of}, so it carries no lines of its own.`
+      : e.record.needs_review ? "Nothing could be read. A person has to look at this email."
+      : "This kind of email asks for nothing, so it has no line items.";
+    out.push(el("div", { class: "card muted", text: why }));
+  } else {
+    out.push(el("div", { class: "row", style: "margin-bottom:8px" }, chip(`${lines.length} lines`), chip(`${count("matched")} matched`, "green"),
+      chip(`${count("not_in_catalog")} not in catalog`), chip(`${count("ambiguous")} ask the customer`, "amber"), chip(`${decided} decided by rep`, "blue")));
+    lines.forEach((line, index) => out.push(lineCard(line, index)));
+  }
+  $("#lines").replaceChildren(...out);
+}
+
+function lineCard(line, index) {
+  const [label, color] = MATCH[line.match] || [line.match || "no catalog answer", ""];
+  const decision = current.decisions[index];
+  const card = el("div", { class: "card click" + (selectedLine === index ? " selected" : ""), onclick: () => showSource(index) },
+    el("div", { class: "row" }, el("b", { text: "#" + (index + 1) }),
+      el("span", { text: line.qty == null ? "quantity not stated" : `${line.qty} ${line.uom || "EA"}` }),
+      chip("from " + line.source)),
+    el("div", { class: "raw mono", text: line.raw }),
+    el("div", { text: line.description }),
+    el("div", { class: "row", style: "margin-top:6px" }, chip(label, color),
+      line.sku ? el("span", { class: "mono", text: `${line.sku}  ${line.sku_description || ""}` }) : null),
+    el("div", { class: "muted", text: line.match_reason || "" }));
+
+  const box = el("div", { class: "decision", onclick: event => event.stopPropagation() });
+  if (decision) {
+    const said = decision.action === "accept" ? "Rep accepted the system's answer."
+      : decision.action === "override" ? `Rep chose ${decision.sku}  ${decision.sku_description || ""}`
+      : "Rep marked this line as not stocked.";
+    box.append(el("div", { class: "rep", text: said }));
+  }
+  const send = (action, sku) => decide(index, action, sku);
+  const search = el("div", { hidden: true });
+  box.append(el("div", { class: "row", style: "margin-top:4px" },
+    el("button", { class: decision?.action === "accept" ? "on" : "", text: "Accept", onclick: () => send("accept") }),
+    el("button", { class: decision?.action === "override" ? "on" : "", text: "Change part", onclick: () => { search.hidden = !search.hidden; if (!search.hidden) $("input", search).focus(); } }),
+    el("button", { class: decision?.action === "not_in_catalog" ? "on" : "", text: "Not stocked", onclick: () => send("not_in_catalog") }),
+    decision ? el("button", { text: "Undo", onclick: () => send("clear") }) : null));
+  if (line.candidates.length)
+    box.append(el("div", { class: "muted", style: "margin-top:6px", text: "Parts that fit what the customer wrote:" }),
+      ...line.candidates.map(c => el("button", { class: "pick mono", text: `${c.sku}  ${c.description}`, onclick: () => send("override", c.sku) })));
+  const results = el("div");
+  let timer = null;
+  search.append(el("input", { type: "search", placeholder: "Search the catalog, e.g. gate 2 800", oninput: event => {
+    clearTimeout(timer);
+    const query = event.target.value;
+    timer = setTimeout(async () => {
+      const found = await api("/api/catalog?q=" + encodeURIComponent(query));
+      results.replaceChildren(...(found.length ? found.map(c => el("button", { class: "pick mono", text: `${c.sku}  ${c.description}`, onclick: () => send("override", c.sku) }))
+        : [el("div", { class: "muted", text: query.trim() ? "No stocked part matches." : "" })]));
+    }, 200);
+  } }), results);
+  box.append(search);
+  card.append(box);
+  return card;
+}
+
+async function decide(index, action, sku) {
+  const answer = await api("/api/decision", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: current.id, line: index, action, sku }) });
+  if (answer.error) { alert(answer.error); return; }
+  current.decisions = answer.decisions;
+  const top = $("#lines").scrollTop;
+  renderLines();
+  $("#lines").scrollTop = top;
+}
+
+// --- where a line came from ----------------------------------------------------------------
+const tokens = text => text.toLowerCase().match(/[a-z0-9][a-z0-9\/#.\-]*/g) || [];
+
+function showSource(index) {
+  selectedLine = index;
+  document.querySelectorAll("#lines .card.click").forEach((card, i) => card.classList.toggle("selected", i === index));
+  document.querySelectorAll(".ln.hit").forEach(node => node.classList.remove("hit"));
+  const line = current.record.line_items[index];
+  const blocks = [...document.querySelectorAll("#email [data-source]")].filter(block => block.dataset.source === line.source);
+  const rows = blocks.flatMap(block => [...block.querySelectorAll(":scope > .ln")]);
+  let first = null;
+  for (const rawLine of line.raw.split("\n").filter(part => part.trim())) {
+    const hit = bestRun(rows, tokens(rawLine));
+    hit.forEach(node => node.classList.add("hit"));
+    first = first || hit[0];
+  }
+  const target = first || blocks[0];
+  if (!target) return;
+  target.scrollIntoView({ block: "center", behavior: "smooth" });
+  if (!first) { target.classList.remove("flash"); void target.offsetWidth; target.classList.add("flash"); }
+}
+
+// The shortest run of up to 4 source lines that covers most of the words of the line item.
+// One line item can be spread over several source lines (a table pasted one cell per line).
+function bestRun(rows, wanted) {
+  if (!wanted.length) return [];
+  const sets = rows.map(row => new Set(tokens(row.textContent)));
+  let best = [], bestScore = 0;
+  for (let size = 1; size <= 4; size++) {
+    for (let start = 0; start + size <= rows.length; start++) {
+      const seen = new Set();
+      for (let i = start; i < start + size; i++) for (const token of sets[i]) seen.add(token);
+      const score = wanted.filter(token => seen.has(token)).length / wanted.length;
+      if (score > bestScore + 0.05) { bestScore = score; best = rows.slice(start, start + size); }
+    }
+  }
+  return bestScore >= 0.5 ? best : [];
+}
+
+document.addEventListener("keydown", event => {
+  if (!["ArrowDown", "ArrowUp"].includes(event.key) || ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName) || !current) return;
+  const at = inbox.findIndex(row => row.id === current.id), next = at + (event.key === "ArrowDown" ? 1 : -1);
+  if (next >= 0 && next < inbox.length) { event.preventDefault(); select(inbox[next].id); }
+});
+// A link such as #E009 opened while the page is already showing another email.
+window.addEventListener("hashchange", () => {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (current && id !== current.id && inbox.some(row => row.id === id)) select(id);
+});
+start();
+</script>
+</body>
+</html>

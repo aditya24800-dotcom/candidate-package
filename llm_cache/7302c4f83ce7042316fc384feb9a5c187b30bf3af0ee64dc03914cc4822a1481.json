@@ -1,0 +1,17 @@
+{
+  "task": "transcribe",
+  "label": "E007",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "kind": "document",
+    "legible": true,
+    "note": null,
+    "text": "8 - 2\" galv 90 elbow\n4 - 〃 tee\n6 - 1\" x 3\" galv nipple\n6 - 1\" x 4\" 〃\n~~3 - 3/4\" bronze ball valve~~\n12 - 2\" galv coupling\n2 - 2\" galv union\n5 jts - 2\" galv pipe"
+  },
+  "usage": {
+    "input_tokens": 1343,
+    "cached_input_tokens": 0,
+    "output_tokens": 112
+  }
+}

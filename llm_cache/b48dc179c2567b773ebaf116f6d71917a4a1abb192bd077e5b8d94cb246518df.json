@@ -1,0 +1,26 @@
+{
+  "task": "read_email",
+  "label": "E023",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "summary": "Walt Kessler asks for a quote on three valves matching the pictured valve and its trim.",
+    "classification": "rfq",
+    "needs_review": false,
+    "review_reason": null,
+    "line_items": [
+      {
+        "raw": "Hey, can you quote 3 of these, same as the one in the pic.",
+        "description": "Halvorsen Valve Co. HV-800-FGS forged steel gate valve, 2 IN, Class 800 LB, NPT ends, A105 body, 13CR trim",
+        "qty": 3,
+        "uom": null,
+        "source": "body"
+      }
+    ]
+  },
+  "usage": {
+    "input_tokens": 1852,
+    "cached_input_tokens": 1638,
+    "output_tokens": 189
+  }
+}

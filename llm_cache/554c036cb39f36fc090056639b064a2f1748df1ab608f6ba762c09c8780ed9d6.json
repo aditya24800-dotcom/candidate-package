@@ -1,0 +1,17 @@
+{
+  "task": "transcribe",
+  "label": "E010",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "kind": "logo_or_signature",
+    "legible": true,
+    "note": null,
+    "text": "Delta Mechanical"
+  },
+  "usage": {
+    "input_tokens": 477,
+    "cached_input_tokens": 0,
+    "output_tokens": 44
+  }
+}

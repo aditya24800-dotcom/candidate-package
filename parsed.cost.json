@@ -1,0 +1,176 @@
+{
+  "emails": 24,
+  "models": [
+    "gpt-6.1-terra"
+  ],
+  "total": {
+    "calls": 29,
+    "live_calls": 0,
+    "input_tokens": 56266,
+    "output_tokens": 15083,
+    "cost_usd": 0.097449
+  },
+  "per_email": {
+    "E001": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1965,
+      "output_tokens": 303,
+      "cost_usd": 0.00348
+    },
+    "E002": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1781,
+      "output_tokens": 264,
+      "cost_usd": 0.001545
+    },
+    "E003": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1883,
+      "output_tokens": 415,
+      "cost_usd": 0.002402
+    },
+    "E004": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2005,
+      "output_tokens": 425,
+      "cost_usd": 0.002574
+    },
+    "E005": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2144,
+      "output_tokens": 503,
+      "cost_usd": 0.003103
+    },
+    "E006": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2870,
+      "output_tokens": 3032,
+      "cost_usd": 0.016474
+    },
+    "E007": {
+      "calls": 2,
+      "live_calls": 0,
+      "input_tokens": 3188,
+      "output_tokens": 423,
+      "cost_usd": 0.003747
+    },
+    "E009": {
+      "calls": 2,
+      "live_calls": 0,
+      "input_tokens": 7675,
+      "output_tokens": 3024,
+      "cost_usd": 0.021239
+    },
+    "E010": {
+      "calls": 3,
+      "live_calls": 0,
+      "input_tokens": 2994,
+      "output_tokens": 546,
+      "cost_usd": 0.004168
+    },
+    "E011": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2077,
+      "output_tokens": 56,
+      "cost_usd": 0.000801
+    },
+    "E012": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1996,
+      "output_tokens": 58,
+      "cost_usd": 0.00073
+    },
+    "E013": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2001,
+      "output_tokens": 51,
+      "cost_usd": 0.0007
+    },
+    "E014": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1950,
+      "output_tokens": 46,
+      "cost_usd": 0.000624
+    },
+    "E015": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2226,
+      "output_tokens": 721,
+      "cost_usd": 0.004275
+    },
+    "E016": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2056,
+      "output_tokens": 449,
+      "cost_usd": 0.002745
+    },
+    "E017": {
+      "calls": 2,
+      "live_calls": 0,
+      "input_tokens": 2290,
+      "output_tokens": 103,
+      "cost_usd": 0.001249
+    },
+    "E018": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1903,
+      "output_tokens": 407,
+      "cost_usd": 0.002382
+    },
+    "E019": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1924,
+      "output_tokens": 499,
+      "cost_usd": 0.002863
+    },
+    "E020": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2077,
+      "output_tokens": 257,
+      "cost_usd": 0.001806
+    },
+    "E021": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 2626,
+      "output_tokens": 2817,
+      "cost_usd": 0.015155
+    },
+    "E022": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1809,
+      "output_tokens": 71,
+      "cost_usd": 0.000608
+    },
+    "E023": {
+      "calls": 2,
+      "live_calls": 0,
+      "input_tokens": 2989,
+      "output_tokens": 277,
+      "cost_usd": 0.002818
+    },
+    "E024": {
+      "calls": 1,
+      "live_calls": 0,
+      "input_tokens": 1837,
+      "output_tokens": 336,
+      "cost_usd": 0.001961
+    }
+  }
+}
