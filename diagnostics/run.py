@@ -46,6 +46,7 @@ for name in SETTINGS:  # the diagnostic itself runs with no key and default sett
     os.environ.pop(name, None)
 ENV = dict(os.environ)
 DEV = Path("data/dev/emails")
+CACHE = Path("rfq_parser/llm/llm_cache")  # the saved model answers
 KEY = json.loads(Path("data/dev/answer_key.json").read_text(encoding="utf-8"))["emails"]
 QUOTE = chr(34)
 
@@ -320,7 +321,7 @@ def robustness() -> None:
           f"{down.calls} failed calls, no exception")
 
     corrupt = TMP / "corrupt_cache"
-    shutil.copytree("llm_cache", corrupt)
+    shutil.copytree(CACHE, corrupt)
     for path in corrupt.glob("*.json"):
         path.write_text("{ this is not json", encoding="utf-8")
     result = run_parse(small, TMP / "corrupt.json", {"RFQ_LLM_CACHE_DIR": str(corrupt)})
@@ -503,7 +504,10 @@ def hygiene() -> None:
             hits.append(str(path))
     check("hygiene", "no API key is stored in any file of the repository", not hits, "; ".join(hits))
     providers = {}
-    for path in Path("llm_cache").glob("*.json"):
+    from rfq_parser.llm.cache import DEFAULT_CACHE_DIR
+
+    check("hygiene", "the code's default cache folder is the one in the repository", DEFAULT_CACHE_DIR == (ROOT / CACHE).resolve(), str(CACHE))
+    for path in CACHE.glob("*.json"):
         provider = read_json(path)["provider"]
         providers[provider] = providers.get(provider, 0) + 1
     check("hygiene", "llm_cache holds the default provider's answers for the dev inbox", providers.get("openai", 0) >= 29, str(providers))

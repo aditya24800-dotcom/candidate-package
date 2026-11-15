@@ -70,14 +70,14 @@ Exit code is 0 when the output was written, and 2 when `--emails` is not a folde
 | `OPENAI_API_KEY` | none | The key for the default provider, OpenAI |
 | `RFQ_LLM_MODEL` | `gpt-6.1-terra` | The model. One model does both jobs: transcribing pictures and scans, and reading the email |
 | `RFQ_LLM_PROVIDER` | `openai` | Set to `anthropic` to use the optional second provider (see below) |
-| `RFQ_LLM_CACHE_DIR` | `llm_cache/` in the repository | Where model answers are saved |
+| `RFQ_LLM_CACHE_DIR` | `rfq_parser/llm/llm_cache/` | Where model answers are saved |
 
 The model is called at reasoning effort `low`, with `store` off so emails are not kept on the
 provider's side.
 
 ## Re-runs and running without a key
 
-Every model answer is saved in `llm_cache/`, one JSON file per request, named by a hash of the
+Every model answer is saved in `rfq_parser/llm/llm_cache/`, one JSON file per request, named by a hash of the
 whole request: provider, model, prompt, answer shape and input. A second run over the same
 inbox finds every answer there and makes no model calls. Change the prompt, the model or an
 email, and only the affected requests are asked again.
@@ -85,7 +85,7 @@ email, and only the affected requests are asked again.
 With no key, a request that is in the cache is answered from it. A request that is not is
 treated like any other model failure, below.
 
-`llm_cache/` in this repository holds the answers for the dev inbox, so the dev command above
+That folder holds the answers for the dev inbox, so the dev command above
 runs with no key and makes no model calls. Checked: a run with the key and a run without it
 wrote identical `parsed.json` files.
 
@@ -129,7 +129,7 @@ first computed, so it reads the same on a replay from cache.
 python diagnostics/run.py
 ```
 
-This runs 58 checks with no key and no model calls, and changes nothing in the repository:
+This runs about 60 checks with no key and no model calls, and changes nothing in the repository:
 the environment, the `parse` command on the dev inbox, accuracy against the answer key, broken
 emails and attachments, a failing provider, each component, the web app's endpoints, and a
 scan for stored API keys. It prints PASS or FAIL per check. Unlike `parse`, it can be started

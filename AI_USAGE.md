@@ -17,7 +17,7 @@
   (23 emails read, 6 transcriptions), 56,266 tokens in and 15,083 out, for $0.10.
 - **Keys:** the agent ran on my own account. The parser was first exercised with my own
   Anthropic key (`claude-opus-5-5`), to spare the $20 cap, and then with the provided OpenAI
-  key. `parsed.json` and the saved answers in `llm_cache/` are from the OpenAI run.
+  key. `parsed.json` and the saved answers in `rfq_parser/llm/llm_cache/` are from the OpenAI run.
 
 ## How I worked
 
@@ -43,7 +43,7 @@ Session `84edf70f`, at "add a step in preparser to detect any dumplicate". Commi
 with it: every model answer is saved to a file named by a hash of the whole request, so a
 changed prompt, model or email asks again and nothing else does. A live run of the dev inbox
 takes about 3 minutes and costs $0.10. From the cache it takes about 1 second and costs
-nothing. Every later test, the 58-check diagnostic and the web app ran from it, and it is also
+nothing. Every later test, the full diagnostic and the web app ran from it, and it is also
 what makes the inbox run with no API key.
 Session `84edf70f`, at "ok create a llm folder and add all LLM related codes in that". Commit
 `f143633`.

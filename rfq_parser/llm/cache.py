@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-DEFAULT_CACHE_DIR = Path(__file__).resolve().parents[2] / "llm_cache"
+DEFAULT_CACHE_DIR = Path(__file__).resolve().parent / "llm_cache"  # next to this file
 
 
 def request_key(request: dict) -> str:
