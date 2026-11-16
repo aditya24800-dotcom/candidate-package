@@ -1,0 +1,68 @@
+{
+  "task": "read_email",
+  "label": "E007",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "summary": "Cody Landry requests prices for the attached yard list for Friday pickup.",
+    "classification": "rfq",
+    "needs_review": false,
+    "review_reason": null,
+    "line_items": [
+      {
+        "raw": "8 - 2\" galv 90 elbow",
+        "description": "2\" galv 90 elbow",
+        "qty": 8,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "4 - ” tee",
+        "description": "2\" galv tee",
+        "qty": 4,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "6 - 1\" x 3\" galv nipple",
+        "description": "1\" x 3\" galv nipple",
+        "qty": 6,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "6 - 1\" x 4\" ”",
+        "description": "1\" x 4\" galv nipple",
+        "qty": 6,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "12 - 2\" galv coupling",
+        "description": "2\" galv coupling",
+        "qty": 12,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "2 - 2\" galv union",
+        "description": "2\" galv union",
+        "qty": 2,
+        "uom": null,
+        "source": "IMG_4172.jpeg"
+      },
+      {
+        "raw": "5 jts - 2\" galv pipe",
+        "description": "2\" galv pipe",
+        "qty": 5,
+        "uom": "EA",
+        "source": "IMG_4172.jpeg"
+      }
+    ]
+  },
+  "usage": {
+    "input_tokens": 1840,
+    "cached_input_tokens": 1638,
+    "output_tokens": 381
+  }
+}

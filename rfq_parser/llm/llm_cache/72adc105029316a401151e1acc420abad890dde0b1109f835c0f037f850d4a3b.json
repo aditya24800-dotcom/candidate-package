@@ -1,0 +1,17 @@
+{
+  "task": "transcribe",
+  "label": "E009",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "kind": "document",
+    "legible": true,
+    "note": null,
+    "text": "--- page 1 ---\nSable Creek Manufacturing\n7300 Refinery Rd, Baytown TX 77520\nPurchasing - Ph (281) 555-0131\n\nRFQ FORM\nRFQ No.: SC-4418\nDate: 10/09/2026\nBuyer: R. Okonkwo\nNeed By: 10/23/2026\nShip To: Baytown plant, Dock 3\nTerms: Net 30\n\nPLEASE QUOTE FIRM PRICE AND LEAD TIME FOR EACH ITEM.\nSUBSTITUTIONS REQUIRE WRITTEN APPROVAL.\n\nITEM | QTY | UOM | SIZE | DESCRIPTION\nFLANGES\n1 | 6 | EA | 1\" | WN 150# RF\n2 | 4 | EA | 1-1/2\" | WN 150# RF\n3 | 10 | EA | 2\" | WN 150# RF\n4 | 8 | EA | 3\" | WN 150# RF\n5 | 12 | EA | 4\" | WN 150# RF\n6 | 6 | EA | 6\" | WN 150# RF\n7 | 4 | EA | 8\" | WN 150# RF\n8 | 4 | EA | 2\" | SO 150# RF\n9 | 4 | EA | 3\" | SO 150# RF\n10 | 6 | EA | 4\" | SO 150# RF\n11 | 4 | EA | 6\" | SO 150# RF\n12 | 2 | EA | 2\" | BL 150# RF\n13 | 2 | EA | 4\" | BL 150# RF\n14 | 2 | EA | 6\" | BL 150# RF\nGASKETS\n15 | 10 | EA | 1\" | Spiral wound, 304/graphite, 150#\n16 | 6 | EA | 1-1/2\" | Spiral wound, 304/graphite, 150#\n17 | 20 | EA | 2\" | Spiral wound, 304/graphite, 150#\n18 | 12 | EA | 3\" | Spiral wound, 304/graphite, 150#\n19 | 16 | EA | 4\" | Spiral wound, 304/graphite, 150#\n20 | 8 | EA | 6\" | Spiral wound, 304/graphite, 150#\n21 | 4 | EA | 8\" | Spiral wound, 304/graphite, 150#\n22 | 2 | EA | 10\" | Spiral wound, 304/graphite, 150#\nSTUD BOLTS\n23 | 32 | EA | 1/2\" x 3\" | B7 w/ 2 heavy hex nuts\n24 | 24 | EA | 5/8\" x 3-1/4\" | B7 w/ 2 heavy hex nuts\n25 | 16 | EA | 5/8\" x 3-1/2\" | B7 w/ 2 heavy hex nuts\n26 | 48 | EA | 3/4\" x 4\" | B7 w/ 2 heavy hex nuts\n27 | 24 | EA | 3/4\" x 4-1/4\" | B7 w/ 2 heavy hex nuts\n28 | 32 | EA | 3/4\" x 4-1/2\" | B7 w/ 2 heavy hex nuts\n\nPage 1 of 2\nSable Creek Manufacturing - RFQ SC-4418"
+  },
+  "usage": {
+    "input_tokens": 2774,
+    "cached_input_tokens": 0,
+    "output_tokens": 826
+  }
+}

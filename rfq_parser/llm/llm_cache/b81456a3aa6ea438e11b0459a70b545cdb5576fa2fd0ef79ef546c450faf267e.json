@@ -1,0 +1,17 @@
+{
+  "task": "transcribe",
+  "label": "E009",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "kind": "document",
+    "legible": true,
+    "note": null,
+    "text": "ITEM | QTY | UOM | SIZE | DESCRIPTION\n29 | 16 | EA | 7/8\" x 5\" | B7 w/ 2 heavy hex nuts\n30 | 16 | EA | 7/8\" x 5-1/4\" | B7 w/ 2 heavy hex nuts\n31 | 16 | EA | 1\" x 5-3/4\" | B7 w/ 2 heavy hex nuts\n32 | 8 | EA | 1\" x 6\" | B7 w/ 2 heavy hex nuts\n\nSable Creek Manufacturing - RFQ SC-4418\nPage 2 of 2"
+  },
+  "usage": {
+    "input_tokens": 2774,
+    "cached_input_tokens": 0,
+    "output_tokens": 168
+  }
+}

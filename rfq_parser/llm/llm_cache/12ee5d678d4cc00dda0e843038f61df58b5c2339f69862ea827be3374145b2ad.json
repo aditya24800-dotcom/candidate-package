@@ -1,0 +1,61 @@
+{
+  "task": "read_email",
+  "label": "E024",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "summary": "Ben Szymanski of Oak Hollow Brewing Co. requests a quote for fittings for a new glycol line.",
+    "classification": "rfq",
+    "needs_review": false,
+    "review_reason": null,
+    "line_items": [
+      {
+        "raw": "10 | 90° elbow | 1/2″",
+        "description": "1/2″ 90° elbow, 316 SS, threaded, 3000#",
+        "qty": 10,
+        "uom": null,
+        "source": "body"
+      },
+      {
+        "raw": "6 | 45° elbow | 1/2″",
+        "description": "1/2″ 45° elbow, 316 SS, threaded, 3000#",
+        "qty": 6,
+        "uom": null,
+        "source": "body"
+      },
+      {
+        "raw": "8 | Tee | 3/4″",
+        "description": "3/4″ tee, 316 SS, threaded, 3000#",
+        "qty": 8,
+        "uom": null,
+        "source": "body"
+      },
+      {
+        "raw": "12 | Coupling, full | 1/2″",
+        "description": "1/2″ full coupling, 316 SS, threaded, 3000#",
+        "qty": 12,
+        "uom": null,
+        "source": "body"
+      },
+      {
+        "raw": "4 | Union | 1/2″",
+        "description": "1/2″ union, 316 SS, threaded, 3000#",
+        "qty": 4,
+        "uom": null,
+        "source": "body"
+      },
+      {
+        "raw": "6 | Hex head plug | 3/4″",
+        "description": "3/4″ hex head plug, 316 SS, threaded, 3000#",
+        "qty": 6,
+        "uom": null,
+        "source": "body"
+      }
+    ]
+  },
+  "usage": {
+    "input_tokens": 1837,
+    "cached_input_tokens": 1638,
+    "output_tokens": 336
+  }
+}

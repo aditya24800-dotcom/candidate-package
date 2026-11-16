@@ -1,0 +1,18 @@
+{
+  "task": "read_email",
+  "label": "E022",
+  "provider": "openai",
+  "model": "gpt-6.1-terra",
+  "output": {
+    "summary": "Marisol Vega of Alden Marine Services sent an RFQ for the pier 7 fire water repair in a password-protected PDF.",
+    "classification": "rfq",
+    "needs_review": true,
+    "review_reason": "The attached RFQ could not be read because the PDF is password-protected; the password is to follow separately.",
+    "line_items": []
+  },
+  "usage": {
+    "input_tokens": 1809,
+    "cached_input_tokens": 1638,
+    "output_tokens": 78
+  }
+}
