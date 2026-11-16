@@ -2,7 +2,7 @@
 
 ## Setup
 
-- **Tool:** Claude Code, in the terminal and in PyCharm. MCP servers: Claude in Chrome, and PyCharm in one early session.
+- **Tool:** Claude Code, in the terminal and in PyCharm. PyCharm in one early session.
 - **Models:** Claude Opus 5.5 for a first attempt (13 Nov), Claude Fable 5.2 for the build handed in (14–15 Nov).
 - **Instruction files:** no project `CLAUDE.md`; one global file, `RTK.md`, which only shortens command output. No subagents.
 - **Skills:** `ponytail`, `ponytail-audit`, `ponytail-review` (smallest change, audit, review), `claude-api`, `caveman`, `claude-in-chrome` (the web app in a browser).

@@ -25,6 +25,25 @@ To keep the packages out of the system Python, make a virtual environment first:
 Developed and run on Windows 11 with Python 3.14.8. The code uses no syntax newer than 3.11,
 but it has not been run on 3.11.
 
+## One command: `run_all.bat`
+
+On Windows, one command does every step below, in order: install requirements, set env,
+parse the dev inbox, check the output, then start the web app.
+
+```
+run_all.bat
+```
+
+Steps, each stopping the script on failure:
+
+1. `python -m pip install -r requirements.txt`
+2. Set `PYTHONUTF8=1`. Warn if `OPENAI_API_KEY` is not set.
+3. `python -m rfq_parser parse --emails data/dev/emails --out parsed.json`
+4. `python data/check_format.py parsed.json --emails data/dev/emails`
+5. `python -m rfq_parser web --emails data/dev/emails`, then open `http://127.0.0.1:8000`
+
+Stop the web app with Ctrl+C. The steps below do the same work by hand.
+
 ## Run
 
 From the repository root:
@@ -44,6 +63,10 @@ For the dev inbox:
 python -m rfq_parser parse --emails data/dev/emails --out parsed.json
 python data/check_format.py parsed.json --emails data/dev/emails
 ```
+
+Set the API key in the same shell before any run that makes model calls, including the first
+run on new emails. Without it, every email not already in the cache falls back to
+`NEEDS REVIEW`:
 
 To set the key for a live run:
 
