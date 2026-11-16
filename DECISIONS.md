@@ -34,7 +34,7 @@ Dev is a live run from an empty cache (`gpt-6.1-terra`, 15 Nov), scored by my ow
 |---|---|---|
 | 3,000 emails a day by webhook | The webhook queues each email; workers run the `parse` steps per email. Dev rates: $12 a day, 9 seconds of model time each. | Per-email steps, cache, cost ledger: yes. Webhook, queue, workers: no. |
 | Provider down for two hours | Each call is retried 3 times, then the email is flagged `needs_review` and the run carries on. The next run reads it. | Yes, tested. A queue that holds and retries: no. |
-| A 300-page PDF | A scan is transcribed one page per call. Text is read in one-page parts, one call each, with the document's opening lines. No page limit. | Yes. 300 text pages: 6,300 of 6,300 lines, 150 calls, $2.21, 77 minutes, one part after another. Scans tested at 6 pages. |
+| A 300-page PDF | A scan is transcribed one page per call. Text is read in one-page parts, one call each, with the document's opening lines. No page limit. | Yes. 300 text pages: 6,300 of 6,300 lines, 150 calls, $2.21, 77 minutes. Scans tested at 6 pages. |
 | The same email delivered twice | Found before the model, at no cost: same `Message-ID`, also across runs, or the same request resent by the same sender. | Yes. A resend with a new `Message-ID` in a later run: no. |
 
 ## Where the model decides and where code decides
@@ -43,7 +43,7 @@ Code does everything with a fixed answer: unpacking, reading attachments, labell
 
 ## How I measured it
 
-Every run is scored against the dev key: class, flags, links, each line's quantity, unit, source and context, then the matcher. Dev was run live from an empty cache, then with no API key, and the files compared. Tested locally, not in the commit history: 12 emails I wrote myself and a 40-page scan.
+Every run is scored against the dev key: class, flags, links, each line's fields, then the matcher. Dev was run live from an empty cache, then with no API key, and the files compared. The 300-page PDF test is `diagnostics/long_pdf.py`. Tested locally, not committed: 12 emails I wrote myself and a 40-page scan.
 
 ## What I rejected
 
@@ -59,12 +59,11 @@ Every run is scored against the dev key: class, flags, links, each line's quanti
 
 ## What's next
 
-- A queue whose worker retries with a growing wait when the provider is down.
+- A queue whose worker retries with a growing wait when the provider is down, and reading the parts of a long document in parallel.
 - Across batches: resends and revisions of earlier emails (today only an exact `Message-ID` repeat is found).
-- Reading the parts of a long document in parallel.
 
 ## The catalog matcher
 
 Each description is normalised into product, size, spec, material, ends and extras, as the catalog is. Every stated attribute must agree. No part left: `not_in_catalog`; more than one: `ambiguous`; a part one attribute off is never offered. Dev: 208 of 209, no wrong part named.
 
-**Time spent:** about 9 hours over 13–15 Nov, by the timestamps in the agent session logs.
+**Time spent:** about 9 hours over 13–15 Nov, by the agent session logs.

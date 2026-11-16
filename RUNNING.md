@@ -134,7 +134,9 @@ Measured on the dev inbox (24 emails) with the default provider and model, OpenA
 
 A long attachment costs more, because it is read in parts of about a page with one model call
 per part, and there is no page limit. Measured: one email with a 300-page text PDF (6,300 item
-rows) took 150 calls, $2.21 and 77 minutes, and returned all 6,300 lines.
+rows) took 150 calls, $2.21 and 77 minutes, and returned all 6,300 lines. To repeat it, run
+`python diagnostics/long_pdf.py`. It makes live calls, so it needs the key;
+`python diagnostics/long_pdf.py 6` is a two-minute, $0.05 version of the same test.
 
 The same inbox on the optional Anthropic provider (`claude-opus-5-5`) cost $0.82.
 
