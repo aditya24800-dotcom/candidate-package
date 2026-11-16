@@ -22,7 +22,7 @@ from html.parser import HTMLParser
 from xml.etree import ElementTree
 
 import openpyxl
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
 
 # A page with less text than this and an image on it is treated as a scan.
 MIN_PAGE_TEXT = 20
@@ -210,6 +210,21 @@ def read_pdf(data: bytes) -> tuple[str | None, int]:
     if filled:  # a fillable form keeps its answers in fields, not in the page text
         out.append("--- form fields ---\n" + "\n".join(filled))
     return "\n".join(out), len(reader.pages)
+
+
+def split_pdf_pages(data: bytes) -> list[bytes]:
+    """Each page of a PDF as a one-page PDF, so a long scan can be read a page at a time."""
+    reader = PdfReader(io.BytesIO(data))
+    if reader.is_encrypted:
+        reader.decrypt("")
+    pages = []
+    for page in reader.pages:
+        writer = PdfWriter()
+        writer.add_page(page)
+        buffer = io.BytesIO()
+        writer.write(buffer)
+        pages.append(buffer.getvalue())
+    return pages
 
 
 def _pdf_page_text(page) -> str:

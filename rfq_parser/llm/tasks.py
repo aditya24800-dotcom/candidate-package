@@ -8,19 +8,31 @@ from .prompts import EMAIL_INSTRUCTIONS, TRANSCRIBE_INSTRUCTIONS
 from .schemas import EMAIL_SCHEMA, TRANSCRIPT_SCHEMA
 
 
-def transcribe(client: LLMClient, *, label: str, mime: str, data: bytes) -> dict:
+def transcribe(client: LLMClient, *, label: str, mime: str, data: bytes, page_of: tuple | None = None) -> dict:
     """Read one image or PDF into text. Returns {kind, legible, note, text}.
 
     The request holds the file's bytes and nothing else about the email, so the same file
-    arriving on two emails is read once.
+    arriving on two emails is read once. For one page cut out of a longer PDF, pass
+    `page_of` = (hash of the whole file, page number, page count): the model is told it has
+    one page of several, and the cache names the page by that instead of by its bytes.
     """
-    part = pdf_part(data) if mime == "application/pdf" else image_part(data, mime)
+    content = [pdf_part(data) if mime == "application/pdf" else image_part(data, mime)]
+    identity = None
+    if page_of:
+        file_hash, number, count = page_of
+        note = (
+            f"This is page {number} of {count} of one scanned document. The other pages are transcribed "
+            'separately, so a mark such as "Page 1 of 2" does not mean anything is missing.'
+        )
+        content.insert(0, text_part(note))
+        identity = f"{note} File sha256 {file_hash}."
     return client.complete(
         task="transcribe",
         label=label,
         instructions=TRANSCRIBE_INSTRUCTIONS,
-        content=[part],
+        content=content,
         schema=TRANSCRIPT_SCHEMA,
+        cache_identity=identity,
     )
 
 

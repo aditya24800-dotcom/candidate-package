@@ -59,6 +59,7 @@ What it writes:
 |---|---|
 | `parsed.json` (the `--out` path) | One record per email, in the shape `data/README.md` defines, plus the optional `sku`, `match` and `match_reason` on each line |
 | `parsed.cost.json` (next to `--out`) | Model calls, live calls, tokens and dollars, in total and per email |
+| `parsed.seen.json` (next to `--out`) | Which emails this and earlier runs read: id, `Message-ID`, class. Not in git |
 | stderr | One line per email as it is read: class, line count, and the review reason if flagged |
 
 Exit code is 0 when the output was written, and 2 when `--emails` is not a folder.
@@ -89,6 +90,20 @@ That folder holds the answers for the dev inbox, so the dev command above
 runs with no key and makes no model calls. Checked: a run with the key and a run without it
 wrote identical `parsed.json` files.
 
+## The same email delivered twice
+
+Duplicates are found before the model is called, so a duplicate costs nothing.
+
+- **In one run:** the same `Message-ID`, or the same request sent again by the same sender.
+- **In a later run:** an email whose `Message-ID` an earlier run already read is a duplicate of
+  that first delivery. `duplicate_of` is then an id from the earlier run. The memory is
+  `parsed.seen.json`, so both runs must use the same `--out`. Delete that file to forget.
+- **Reading the same file again** is not a second delivery: a re-run over the same folder gives
+  the same output.
+- **Not covered:** a resend with a new `Message-ID` that arrives in a later run. Across runs only
+  the exact `Message-ID` counts, so that a repeat order next month is never emptied.
+- An email the model could not read is not remembered, so its next delivery is read.
+
 ## When something fails
 
 No email can stop the run, and every email in the folder gets a record.
@@ -110,12 +125,16 @@ Measured on the dev inbox (24 emails) with the default provider and model, OpenA
 
 | | |
 |---|---|
-| Model calls | 29: 23 to read emails, 6 to transcribe pictures and scans. One email is a duplicate and is never sent to the model |
-| Tokens | 56,266 in, 15,083 out |
+| Model calls | 30: 23 to read emails, 7 to transcribe pictures and scans (a scanned PDF is one call per page). One email is a duplicate and is never sent to the model |
+| Tokens | 56,822 in, 14,892 out |
 | Cost | $0.10 in total, $0.004 per email on average |
-| Most expensive emails | E009 $0.021, E006 $0.017, E021 $0.015 (a 32-row scan, and lists of 44 and 50 lines) |
+| Most expensive emails | E009 $0.022, E006 $0.016, E021 $0.015 (a 32-row scan, and lists of 44 and 50 lines) |
 | Cheapest emails | under $0.001 each (no line items) |
 | Time | about 3.5 minutes live; about 1 second on a re-run from cache |
+
+A long attachment costs more, because it is read in parts of about a page with one model call
+per part, and there is no page limit. Measured: one email with a 300-page text PDF (6,300 item
+rows) took 150 calls, $2.21 and 77 minutes, and returned all 6,300 lines.
 
 The same inbox on the optional Anthropic provider (`claude-opus-5-5`) cost $0.82.
 
@@ -129,7 +148,7 @@ first computed, so it reads the same on a replay from cache.
 python diagnostics/run.py
 ```
 
-This runs about 60 checks with no key and no model calls, and changes nothing in the repository:
+This runs about 70 checks with no key and no model calls, and changes nothing in the repository:
 the environment, the `parse` command on the dev inbox, accuracy against the answer key, broken
 emails and attachments, a failing provider, each component, the web app's endpoints, and a
 scan for stored API keys. It prints PASS or FAIL per check. Unlike `parse`, it can be started

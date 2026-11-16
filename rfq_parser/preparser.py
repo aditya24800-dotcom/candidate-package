@@ -9,9 +9,9 @@
    Nothing is dropped: every body line lands in exactly one part. The labels are facts read
    from quote marks and header lines. What a part means for the request is the model's call.
 
-2. find_duplicates() compares all emails of an inbox and names the ones that are the same
-   request sent again. It runs before the model, so a duplicate costs no model call and its
-   lines are never extracted a second time.
+2. find_duplicates() compares all emails of an inbox, and the Message-IDs of emails read by
+   earlier runs, and names the ones that are the same request sent again. It runs before the
+   model, so a duplicate costs no model call and its lines are never extracted a second time.
 """
 
 from __future__ import annotations
@@ -205,12 +205,18 @@ def fingerprint(email: dict) -> dict:
     }
 
 
-def find_duplicates(emails: dict[str, dict]) -> dict[str, str]:
+def find_duplicates(emails: dict[str, dict], earlier: dict[str, str] | None = None) -> dict[str, str]:
     """Return {duplicate email id: original email id} for an inbox of parsed emails.
 
     The email with the later Date is the duplicate. A wrong "duplicate" would empty a real
     order, so every rule below needs positive evidence, and doubt means "not a duplicate".
+
+    `earlier` is {Message-ID: email id} for the emails earlier runs read. An email here with one
+    of those Message-IDs is that email delivered again, and the earlier one is its original.
+    Only this exact rule reaches across runs: a customer who sends the same order again next
+    month is placing a new order.
     """
+    earlier = earlier or {}
     prints = {eid: fingerprint(email) for eid, email in emails.items() if not email.get("error")}
     # Oldest first; emails with no usable date go last, in id order.
     order = sorted(prints, key=lambda eid: (prints[eid]["sent"] is None, prints[eid]["sent"] or 0, eid))
@@ -219,9 +225,12 @@ def find_duplicates(emails: dict[str, dict]) -> dict[str, str]:
     for eid in order:
         match = next((o for o in originals if _same_request(prints[o], prints[eid])), None)
         if match:
-            duplicates[eid] = match
-        else:
-            originals.append(eid)
+            duplicates[eid] = duplicates.get(match, match)  # a repeat of a second delivery points at the first
+            continue
+        originals.append(eid)
+        before = earlier.get(prints[eid]["message_id"])
+        if before and before not in emails:  # an id in this inbox is that file read again, not a second delivery
+            duplicates[eid] = before
     return duplicates
 
 

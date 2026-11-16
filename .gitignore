@@ -5,4 +5,5 @@ __pycache__/
 
 # Files written while running
 *.tmp
+*.seen.json
 decisions.json

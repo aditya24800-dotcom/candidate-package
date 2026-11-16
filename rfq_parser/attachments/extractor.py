@@ -14,7 +14,9 @@ extract() never raises. Every attachment comes back as a dict:
 
 from __future__ import annotations
 
+import hashlib
 import io
+import re
 import zipfile
 from email import policy
 from email.parser import BytesParser
@@ -25,7 +27,7 @@ from . import readers
 from .readers import Unreadable
 from .sniff import IMAGE_MEDIA_TYPES, sniff
 
-MAX_SCANNED_PAGES = 30  # a longer scan is sent to a person, not to the model
+_PAGE_MARKER = re.compile(r"^--- page \d+ ---[ \t]*\n?", re.M)
 MAX_DEPTH = 2  # archive inside archive inside email, and no further
 MAX_ARCHIVE_FILES = 25
 MAX_ARCHIVE_BYTES = 50 * 1024 * 1024
@@ -95,9 +97,7 @@ class AttachmentExtractor:
             text, pages = readers.read_pdf(data)
             if text is not None:
                 return self._from_code(filename, file_type, text)
-            if pages > MAX_SCANNED_PAGES:
-                raise Unreadable(f"scanned PDF has {pages} pages, more than the {MAX_SCANNED_PAGES} sent to the model")
-            return self._from_model(label, filename, file_type, "application/pdf", data)
+            return self._from_model_by_page(label, filename, data)
         if file_type in IMAGE_MEDIA_TYPES:
             return self._from_model(label, filename, file_type, IMAGE_MEDIA_TYPES[file_type], data)
         if file_type == "eml":
@@ -127,6 +127,36 @@ class AttachmentExtractor:
             text=answer["text"],
             note=answer["note"],
         )
+
+    def _from_model_by_page(self, label: str, filename: str, data: bytes) -> dict:
+        """A scanned PDF, one model call per page.
+
+        No call grows with the document, so there is no page limit. A page that fails is
+        marked in the text and the other pages are still read.
+        """
+        if self.llm is None:
+            raise Unreadable("needs the model to read it, and no model client was given")
+        file_hash = hashlib.sha256(data).hexdigest()
+        pages = readers.split_pdf_pages(data)
+        texts, problems, kinds, first_error = [], [], set(), None
+        for number, page in enumerate(pages, 1):
+            try:
+                answer = transcribe(self.llm, label=label, mime="application/pdf", data=page, page_of=(file_hash, number, len(pages)))
+            except LLMUnavailable as exc:
+                first_error = first_error or str(exc)
+                texts.append(f"--- page {number} ---\n[THIS PAGE COULD NOT BE READ]")
+                problems.append(f"page {number} could not be read")
+                continue
+            kinds.add(answer["kind"])
+            body = _PAGE_MARKER.sub("", answer["text"]).strip("\n")  # the page number is ours to write
+            texts.append(f"--- page {number} ---\n{body}")
+            if not answer["legible"]:
+                problems.append(f"page {number}: {answer['note'] or 'the reader was unsure of part of it'}")
+        if not kinds:
+            raise Unreadable(f"needs the model to read it: {first_error}")
+        kind = "document" if "document" in kinds else sorted(kinds)[0]
+        note = "; ".join(problems) or None
+        return result(filename, "pdf", status="ok", method="llm", kind=kind, legible=not problems, text="\n".join(texts), note=note)
 
     def _from_email(self, label: str, filename: str, data: bytes, depth: int) -> dict:
         """An attached message: its headers and body as text, its own attachments as children."""

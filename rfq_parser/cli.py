@@ -4,7 +4,9 @@
     python -m rfq_parser web   --emails <dir> [--port 8000]
 
 `parse` writes the records to --out, and the cost of the run (model calls, tokens and dollars
-per email) to a file next to it ending in .cost.json.
+per email) to a file next to it ending in .cost.json. A third file next to it, ending in
+.seen.json, remembers which emails were read, so that an email delivered again in a later run
+with the same --out is recognised as a duplicate.
 `web` starts the local walk-through app on the same inbox.
 """
 
@@ -39,8 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         serve(args.emails, args.port, args.decisions)
         return 0
 
-    records, calls = parse_inbox(args.emails, log=lambda line: print(line, file=sys.stderr))
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    seen_file = args.out.with_suffix(".seen.json")
+    records, calls = parse_inbox(args.emails, log=lambda line: print(line, file=sys.stderr), seen_file=seen_file)
     args.out.write_text(json.dumps(records, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     cost = cost_report(calls, len(records))

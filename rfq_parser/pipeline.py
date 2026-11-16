@@ -2,7 +2,8 @@
 
 Order of work:
   1. unpack each email and read its attachments        (mime_parser, attachments)
-  2. find emails that repeat an earlier one             (preparser.find_duplicates)
+  2. find emails that repeat an earlier one, in this
+     inbox or in an earlier run                         (preparser.find_duplicates)
   3. for every other email: build the model's input,
      ask the model, interpret the answer                (render, llm, interpreter)
   4. link each revision to the email it revises         (thread headers)
@@ -14,15 +15,22 @@ that record asks for a person to look.
 
 from __future__ import annotations
 
+import json
+import os
 import re
 from pathlib import Path
 
+from data.check_format import CLASSES
+
 from .attachments import AttachmentExtractor
 from .interpreter import Interpreter
+from .interpreter.interpreter import REQUEST_CLASSES
 from .llm import LLMClient, LLMUnavailable, read_email
 from .mime_parser import MimeParser
 from .preparser import find_duplicates
-from .render import render_email
+from .render import render_calls
+
+_CALL_BREAK = "\n\n" + "=" * 30 + " next model call " + "=" * 30 + "\n\n"
 
 # Without the model, only these are safe to call "not a request": a bounce or an out-of-office.
 _AUTO_SENDER = re.compile(r"mailer-daemon|postmaster", re.I)
@@ -37,18 +45,24 @@ def parse_inbox(
     log=None,
     trace: dict | None = None,
     files_dir: Path | None = None,
+    seen_file: Path | None = None,
 ) -> tuple[dict, list]:
     """Return ({email id: record}, the model call ledger). `log` is called with one line per email.
 
     Pass a dict as `trace` to also get the working data of each email (the unpacked email, the
     text the model was sent, the model's answer), and `files_dir` to keep the attachment files.
     The web app uses both; the command line uses neither.
+
+    Pass `seen_file` to remember between runs which emails were read. An email that arrives
+    again in a later run, under another file name, is then a duplicate of the first delivery
+    and is not sent to the model. The command line passes it; the web app does not.
     """
     llm = llm or LLMClient()
     log = log or (lambda line: None)
     interpreter = Interpreter()
     emails = MimeParser(files_dir=files_dir, extractor=AttachmentExtractor(llm)).parse_dir(emails_dir)
-    duplicates = find_duplicates(emails)
+    seen = _load_seen(seen_file)
+    duplicates = find_duplicates(emails, {entry["message_id"]: email_id for email_id, entry in seen.items()})
 
     records: dict[str, dict] = {}
     for email_id, email in emails.items():
@@ -61,21 +75,77 @@ def parse_inbox(
         record = records[email_id]
         flag = "  NEEDS REVIEW: " + record["review_reason"] if record["needs_review"] else ""
         log(f"{email_id}  {record['classification']:<15} {len(record['line_items']):>3} lines{flag}")
+        message_id = str(email["headers"].get("message_id") or "").strip()
+        if message_id and notes["answer"] is not None:  # an email the model could not read is not remembered: its next delivery must be read
+            seen[email_id] = {"message_id": message_id, "classification": record["classification"]}
 
     _link_revisions(emails, records)
     for email_id, original_id in duplicates.items():
-        records[email_id] = Interpreter.duplicate_record(records[original_id], original_id)
-        log(f"{email_id}  duplicate of {original_id}")
+        in_this_run = original_id in records
+        original = records[original_id] if in_this_run else seen[original_id]
+        records[email_id] = Interpreter.duplicate_record(original, original_id)
+        log(f"{email_id}  duplicate of {original_id}" + ("" if in_this_run else " (read in an earlier run)"))
+    if seen_file is not None:
+        _save_seen(seen_file, seen, log)
     return {email_id: records[email_id] for email_id in sorted(records)}, llm.calls
+
+
+def _load_seen(path: Path | None) -> dict:
+    """The emails earlier runs read: {email id: {"message_id", "classification"}}.
+    No file, or a damaged one, is an empty memory.
+
+    shortcut: one JSON file, read whole, one run at a time; a real inbox needs a database with
+    a unique key on Message-ID, and entries that expire.
+    """
+    if path is None:
+        return {}
+    try:
+        stored = json.loads(path.read_text(encoding="utf-8"))
+        return {
+            email_id: entry
+            for email_id, entry in stored.items()
+            if isinstance(entry["message_id"], str) and entry["classification"] in CLASSES
+        }
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return {}
+
+
+def _save_seen(path: Path, seen: dict, log) -> None:
+    try:
+        temporary = path.with_name(path.name + ".tmp")
+        temporary.write_text(json.dumps(seen, indent=1) + "\n", encoding="utf-8")
+        os.replace(temporary, path)  # all or nothing: a crash never leaves half a file
+    except OSError as exc:  # the records of this run matter more than the memory of it
+        log(f"warning: this run's emails were not remembered for later runs ({type(exc).__name__})")
 
 
 def _read_one(email_id: str, email: dict, llm: LLMClient, interpreter: Interpreter, notes: dict) -> dict:
     if email.get("error"):
         return fallback_record(email, f"The email file could not be parsed ({email['error']}).")
     try:
-        notes["model_input"] = render_email(email)
-        notes["answer"] = read_email(llm, label=email_id, email_text=notes["model_input"])
-        return interpreter.interpret(notes["answer"])
+        texts = render_calls(email)  # one text, or several when an attachment is long
+        notes["model_input"] = _CALL_BREAK.join(texts)
+        answer = read_email(llm, label=email_id, email_text=texts[0])
+        answer = {**answer, "line_items": list(answer["line_items"])}
+        failed = 0
+        if answer["classification"] in REQUEST_CLASSES:  # only a request has lines worth the further calls
+            for text in texts[1:]:
+                try:
+                    answer["line_items"] += read_email(llm, label=email_id, email_text=text)["line_items"]
+                except LLMUnavailable:
+                    failed += 1  # the other parts still count; this one is reported below
+        if len(texts) > 1 and answer["line_items"]:
+            # A call sees one part of a long attachment and may ask for review because the rest is
+            # not in front of it. Only code knows whether every part was read, so code decides.
+            read_in_full = all(a["extraction"]["status"] == "ok" and a["extraction"]["legible"] for a in email["attachments"])
+            if read_in_full:
+                answer["needs_review"], answer["review_reason"] = False, None
+        if failed:
+            problem = f"{failed} of {len(texts)} parts of a long attachment could not be read by the model."
+            answer["review_reason"] = " ".join(filter(None, (answer["review_reason"], problem)))
+            answer["needs_review"] = True
+        notes["answer"] = answer
+        return interpreter.interpret(answer)
     except LLMUnavailable as exc:
         return fallback_record(email, f"The model was not available to read this email ({exc}).")
     except Exception as exc:  # a fault in our own code must not cost the other emails

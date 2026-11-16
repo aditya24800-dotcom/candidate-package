@@ -71,9 +71,11 @@ def read_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def mail(subject, body="Please quote attached.", files=(), html=None, date="Mon, 05 Oct 2026 09:12:00 -0500", sender="buyer@customer.example"):
+def mail(subject, body="Please quote attached.", files=(), html=None, date="Mon, 05 Oct 2026 09:12:00 -0500", sender="buyer@customer.example", message_id=None):
     message = EmailMessage()
     message["From"], message["To"], message["Date"], message["Subject"] = sender, "rfq@ridgeline-supply.example", date, subject
+    if message_id:
+        message["Message-ID"] = message_id
     message.set_content(body)
     if html:
         message.add_alternative(html, subtype="html")
@@ -370,6 +372,9 @@ def components() -> None:
         ("a different sender", [mail("RFQ", files=[("bom.csv", csv_file)]), mail("RFQ", files=[("bom.csv", csv_file)], date=later, sender="other@elsewhere.example")], {}),
         ("identical text twice", [mail("RFQ", body=body_list), mail("RFQ", body=body_list, date=later)], {"M2": "M1"}),
         ("a status question, then a new request", [mail("q", body="Any update on my quote?"), mail("q", body="Please quote the same valve as last time.", date=later)], {}),
+        ("the same email delivered twice (same Message-ID, same bytes)", [mail("RFQ", body=body_list, message_id="<a1@customer.example>")] * 2, {"M2": "M1"}),
+        ("the same email delivered three times", [mail("RFQ", body=body_list, message_id="<a1@customer.example>")] * 3, {"M2": "M1", "M3": "M1"}),
+        ("same Message-ID, second copy arrives with a later Date header", [mail("RFQ", body=body_list, message_id="<a1@customer.example>"), mail("RFQ", body=body_list, message_id="<a1@customer.example>", date=later)], {"M2": "M1"}),
     ]  # fmt: skip
     wrong = []
     for name, messages, want in tests:
@@ -379,6 +384,62 @@ def components() -> None:
         if find_duplicates(MimeParser().parse_dir(folder)) != want:
             wrong.append(name)
     check("parts", f"duplicates: {len(tests)} made-up cases decided correctly", not wrong, "; ".join(wrong))
+
+    # The same email delivered again in a later run. The two runs share --out, so they share the memory of read emails.
+    first_run, later_run, out = TMP / "delivery1", TMP / "delivery2", TMP / "deliveries.json"
+    first_run.mkdir()
+    later_run.mkdir()
+    shutil.copy(DEV / "E006.eml", first_run)
+    shutil.copy(DEV / "E006.eml", later_run / "X1.eml")  # the same email, delivered again
+    shutil.copy(DEV / "E008.eml", later_run / "X2.eml")  # the customer's own resend of it
+    shutil.copy(DEV / "E001.eml", later_run / "X3.eml")  # a different request
+    run_parse(first_run, out)
+    run_parse(later_run, out)
+    records, cost = read_json(out), read_json(out.with_suffix(".cost.json"))
+    check("parts", "duplicates: an email delivered again in a later run points at the first delivery, and its resend does too",
+          records["X1"]["duplicate_of"] == "E006" and records["X2"]["duplicate_of"] == "E006" and not records["X1"]["line_items"])
+    check("parts", "duplicates: the second delivery costs no model call, and a different request is still read",
+          list(cost["per_email"]) == ["X3"] and records["X3"]["duplicate_of"] is None and len(records["X3"]["line_items"]) > 0)
+    before = out.read_bytes()
+    run_parse(later_run, out)
+    check("parts", "duplicates: reading the same folder again gives the same output", out.read_bytes() == before)
+    out.with_suffix(".seen.json").write_text("{ this is not json", encoding="utf-8")
+    damaged = run_parse(later_run, out)
+    check("robust", "a damaged memory of read emails is treated as empty, not as a crash", damaged.returncode == 0 and len(read_json(out)) == 3)
+    alone = TMP / "resend_alone"
+    alone.mkdir()
+    shutil.copy(DEV / "E008.eml", alone / "X2.eml")
+    run_parse(first_run, TMP / "resend.json")
+    run_parse(alone, TMP / "resend.json")
+    caught = read_json(TMP / "resend.json")["X2"]["duplicate_of"] == "E006"
+    check("limits", "a resend with a new Message-ID that arrives in a later run is recognised as a duplicate", caught,
+          "" if caught else "across runs only the same Message-ID counts; inside one run the resend is caught")
+
+    # A long attachment is read in parts, one model call each; a scan is transcribed page by page.
+    from pypdf import PdfReader, PdfWriter
+
+    from rfq_parser.attachments import readers
+    from rfq_parser.render import render_calls, render_email
+
+    check("parts", "every dev email is still one model call, with the same text", all(render_calls(e) == [render_email(e)] for e in dev.values()))
+    writer = PdfWriter()
+    for _ in range(3):
+        for page in PdfReader(io.BytesIO(dev_attachment("E006", "application/pdf"))).pages:
+            writer.add_page(page)
+    six_pages = io.BytesIO()
+    writer.write(six_pages)
+    long_inbox = TMP / "long_inbox"
+    long_inbox.mkdir()
+    (long_inbox / "L1.eml").write_bytes(mail("RFQ", body="Please quote the attached.", files=[("long.pdf", six_pages.getvalue())]))
+    calls = render_calls(MimeParser(extractor=AttachmentExtractor()).parse_dir(long_inbox)["L1"])
+    contexts = [call.split("[this part]")[0] for call in calls[1:]]
+    check("parts", "a 6-page PDF is read in 3 calls, and each later call is given the form fields and the column header",
+          len(calls) == 3 and all("Rating: | 150# RF" in c and "ITEM | QTY | UOM | SIZE | DESCRIPTION" in c for c in contexts), f"{len(calls)} calls")
+    rows = sum(line.split(" | ")[0].strip().isdigit() for call in calls for line in call.split("[this part]")[-1].splitlines())
+    check("parts", "the parts together hold every row of the document exactly once", rows == 126, f"{rows} rows")
+    scan = dev_attachment("E009", "application/pdf")
+    pages = readers.split_pdf_pages(scan)
+    check("parts", "a scanned PDF is cut into single pages, with the same bytes every time", len(pages) == 2 and pages == readers.split_pdf_pages(scan))
 
     interpreter = Interpreter()
     description = {part.sku: part.description for part in interpreter.parts}

@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 
 from .anthropic_provider import AnthropicProvider
+from .base import text_part
 from .cache import ResponseCache, request_key
 from .openai_provider import OpenAIProvider
 
@@ -49,12 +50,24 @@ class LLMClient:
         # One record per complete() call, cached or live. The cost report is built from this.
         self.calls: list[dict] = []
 
-    def complete(self, *, task: str, label: str, instructions: str, content: list[dict], schema: dict) -> dict:
-        """Return the model's JSON answer for this request. `label` is the email id, for the ledger."""
-        request = self.provider.build_request(
-            model=self.model, task=task, instructions=instructions, parts=content, schema=schema, effort=self.effort
-        )
-        key = request_key({"provider": self.provider.name, "request": request})
+    def complete(
+        self, *, task: str, label: str, instructions: str, content: list[dict], schema: dict, cache_identity: str | None = None
+    ) -> dict:
+        """Return the model's JSON answer for this request. `label` is the email id, for the ledger.
+
+        The answer is saved under a hash of the whole request. With `cache_identity`, that text
+        stands in for the content when the hash is made: "page 3 of the file with this hash" is
+        then the same request on every machine, however the page's bytes were produced.
+        """
+
+        def build(parts: list[dict]) -> dict:
+            return self.provider.build_request(
+                model=self.model, task=task, instructions=instructions, parts=parts, schema=schema, effort=self.effort
+            )
+
+        request = build(content)
+        keyed = request if cache_identity is None else build([text_part(cache_identity)])
+        key = request_key({"provider": self.provider.name, "request": keyed})
         entry = self.cache.get(key)
         from_cache = entry is not None
         if not from_cache:
